@@ -1,0 +1,5 @@
+# src/main/resources/premium.yml
+premium:
+  enabled: true
+  maxRobberiesFree: 3
+  maxRobberiesPremium: -1

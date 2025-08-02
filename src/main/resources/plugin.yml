@@ -1,0 +1,28 @@
+name: MetroCore
+version: '1.0'
+main: net.metroCore.MetroCore
+api-version: '1.21'
+authors:
+  - infinityastro
+description: InfinityAstro modular core plugin with proxy connection support
+
+permissions:
+  metrocore.*:
+    description: Gives access to all MetroCore commands
+    default: op
+    children:
+      metrocore.command.*: true
+      metrocore.gun.*: true
+
+commands:
+  metrocore:
+    description: Main command for MetroCore
+    usage: /<command> <subcommand>
+    permission: metrocore.command.main
+    aliases: [mc]
+
+  gun:
+    description: Gun commands (shoot / reload / give)
+    usage: /gun <subcommand> [args…]
+    permission: metrocore.gun
+    aliases: [guns]
