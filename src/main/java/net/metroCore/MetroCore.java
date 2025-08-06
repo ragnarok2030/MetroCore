@@ -45,6 +45,7 @@ public final class MetroCore extends JavaPlugin {
         // 4. Register modules (add your module instances here)
         moduleRegistry.register(new net.metroCore.Modules.guns.GunsModule(this));
         moduleRegistry.register(new net.metroCore.Modules.items.ItemsModule(this));
+        moduleRegistry.register(new net.metroCore.Modules.metroedit.MetroEditModule(this));
         // e.g. moduleRegistry.register(new RobberyModule(this));
 
         // 5. Enable all active modules

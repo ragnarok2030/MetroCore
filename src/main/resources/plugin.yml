@@ -13,6 +13,7 @@ permissions:
     children:
       metrocore.command.*: true
       metrocore.gun.*: true
+      metrocore.metroedit.*: true
 
 commands:
   metrocore:
@@ -26,3 +27,9 @@ commands:
     usage: /gun <subcommand> [args…]
     permission: metrocore.gun
     aliases: [guns]
+
+  metroedit:
+    description: World-edit style operations (select, fill, brush, etc.)
+    usage: /metroedit <subcommand> [args…]
+    permission: metrocore.metroedit
+    aliases: [me]
