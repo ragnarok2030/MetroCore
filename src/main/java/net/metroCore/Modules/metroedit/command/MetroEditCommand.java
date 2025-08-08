@@ -65,15 +65,13 @@ import net.metroCore.Modules.metroedit.command.region.WallsSubCommand;
 import net.metroCore.Modules.metroedit.command.region.FacesSubCommand;
 
 // ── generation ─────────────────────────────────────────
-//import net.metroCore.Modules.metroedit.command.generation.SphereSubCommand;
-//import net.metroCore.Modules.metroedit.command.generation.CylSubCommand;
-//import net.metroCore.Modules.metroedit.command.generation.HSphereSubCommand;
-//import net.metroCore.Modules.metroedit.command.generation.HCylSubCommand;
-//import net.metroCore.Modules.metroedit.command.generation.PyramidSubCommand;
-//import net.metroCore.Modules.metroedit.command.generation.PrismSubCommand;
-//import net.metroCore.Modules.metroedit.command.generation.ForestSubCommand;
-//import net.metroCore.Modules.metroedit.command.generation.BrushSubCommand;
-//import net.metroCore.Modules.metroedit.command.generation.GenerateBiomeSubCommand;
+import net.metroCore.Modules.metroedit.command.generation.SphereSubCommand;
+import net.metroCore.Modules.metroedit.command.generation.CylSubCommand;
+import net.metroCore.Modules.metroedit.command.generation.HSphereSubCommand;
+import net.metroCore.Modules.metroedit.command.generation.HCylSubCommand;
+import net.metroCore.Modules.metroedit.command.generation.PyramidSubCommand;
+import net.metroCore.Modules.metroedit.command.generation.PrismSubCommand;
+import net.metroCore.Modules.metroedit.command.generation.GenerateBiomeSubCommand;
 
 // ── schematic ───────────────────────────────────────────
 //import net.metroCore.Modules.metroedit.command.schematic.SchematicSubCommand;
@@ -194,16 +192,14 @@ public class MetroEditCommand extends AbstractCommand {
         registerSubCommand("walls",          new WallsSubCommand());
         registerSubCommand("faces",          new FacesSubCommand());
 
-//        // generation
-//        registerSubCommand("sphere",         new SphereSubCommand());
-//        registerSubCommand("cyl",            new CylSubCommand());
-//        registerSubCommand("hsphere",        new HSphereSubCommand());
-//        registerSubCommand("hcyl",           new HCylSubCommand());
-//        registerSubCommand("pyramid",        new PyramidSubCommand());
-//        registerSubCommand("prism",          new PrismSubCommand());
-//        registerSubCommand("forest",         new ForestSubCommand());
-//        registerSubCommand("brush",          new BrushSubCommand());
-//        registerSubCommand("generatebiome",  new GenerateBiomeSubCommand());
+        // generation
+        registerSubCommand("sphere",         new SphereSubCommand());
+        registerSubCommand("cyl",            new CylSubCommand());
+        registerSubCommand("hsphere",        new HSphereSubCommand());
+        registerSubCommand("hcyl",           new HCylSubCommand());
+        registerSubCommand("pyramid",        new PyramidSubCommand());
+        registerSubCommand("prism",          new PrismSubCommand());
+        registerSubCommand("generatebiome",  new GenerateBiomeSubCommand());
 //
 //        // schematic
 //        registerSubCommand("schematic",      new SchematicSubCommand());

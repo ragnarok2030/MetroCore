@@ -1,11 +1,10 @@
-// FacesSubCommand.java
 package net.metroCore.Modules.metroedit.command.region;
 
 import net.metroCore.Core.command.AbstractSubCommand;
 import net.metroCore.MetroCore;
 import net.metroCore.Modules.metroedit.MetroEditModule;
-import net.metroCore.Modules.metroedit.handler.SelectionHandler;
 import net.metroCore.Modules.metroedit.handler.UndoRedoHandler;
+import net.metroCore.Modules.metroedit.handler.UndoRedoHandler.BlockChange;
 import net.metroCore.Modules.metroedit.region.CuboidRegion;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -14,7 +13,10 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
+import java.util.function.ToIntFunction;
 
 public class FacesSubCommand extends AbstractSubCommand {
     @Override
@@ -37,44 +39,62 @@ public class FacesSubCommand extends AbstractSubCommand {
         MetroEditModule mod = MetroCore.getInstance()
                 .getModuleRegistry()
                 .get(MetroEditModule.class);
-        SelectionHandler sel = mod.getSelectionHandler();
         UndoRedoHandler undo = mod.getUndoRedoHandler();
 
-        sel.getPos1(p).flatMap(a ->
-                sel.getPos2(p).map(b -> new CuboidRegion(a, b))
+        mod.getSelectionHandler().getPos1(p).flatMap(a ->
+                mod.getSelectionHandler().getPos2(p).map(b -> new CuboidRegion(a, b))
         ).ifPresentOrElse(region -> {
+            // determine coordinate extractor and target value
+            ToIntFunction<Location> coordFunc;
+            switch (face) {
+                case "north": coordFunc = Location::getBlockZ; break;
+                case "south": coordFunc = Location::getBlockZ; break;
+                case "west":  coordFunc = Location::getBlockX; break;
+                case "east":  coordFunc = Location::getBlockX; break;
+                case "down":  coordFunc = Location::getBlockY; break;
+                case "up":    coordFunc = Location::getBlockY; break;
+                default:
+                    p.sendMessage("§cInvalid face: " + face);
+                    return;
+            }
+            // compute target coordinate
+            int targetVal;
+            if (face.equals("north") || face.equals("west") || face.equals("down")) {
+                targetVal = coordFunc.applyAsInt(region.iterator().next());
+            } else {
+                targetVal = getMax(region, coordFunc);
+            }
+
+            // collect changes
+            List<BlockChange> batch = new ArrayList<>();
             for (Location loc : region) {
-                Optional<Boolean> match = switch (face) {
-                    case "north" -> Optional.of(loc.getBlockZ() == region.iterator().next().getBlockZ());
-                    case "south" -> Optional.of(loc.getBlockZ() == getMax(region, r -> r.getBlockZ()));
-                    case "west"  -> Optional.of(loc.getBlockX() == region.iterator().next().getBlockX());
-                    case "east"  -> Optional.of(loc.getBlockX() == getMax(region, r -> r.getBlockX()));
-                    case "down"  -> Optional.of(loc.getBlockY() == region.iterator().next().getBlockY());
-                    case "up"    -> Optional.of(loc.getBlockY() == getMax(region, r -> r.getBlockY()));
-                    default      -> Optional.empty();
-                };
-                if (match.orElse(false)) {
-                    undo.record(p, loc, loc.getBlock().getBlockData(), mat.createBlockData());
-                    loc.getBlock().setType(mat);
+                if (coordFunc.applyAsInt(loc) == targetVal) {
+                    batch.add(new BlockChange(
+                            loc.clone(),
+                            loc.getBlock().getBlockData(),
+                            mat.createBlockData()
+                    ));
                 }
             }
+
+            // record and apply in one undo step
+            undo.recordBulk(p, batch);
+            batch.forEach(BlockChange::applyRedo);
             p.sendMessage("§aFilled face " + face + " with " + mat.name() + ".");
         }, () -> p.sendMessage("§cBoth positions must be set first."));
 
         return true;
     }
 
-    private interface Coord { int get(Location l); }
-
-    private int getMax(CuboidRegion region, Coord c) {
-        int m = Integer.MIN_VALUE;
-        for (Location loc : region) {
-            m = Math.max(m, c.get(loc));
-        }
-        return m;
-    }
-
     @Override public String getDescription() { return "Fill a single face of the selection"; }
     @Override public String getUsage()       { return "faces <face> <material>"; }
     @Override public String getPermission()  { return "metrocore.metroedit.faces"; }
+
+    private int getMax(CuboidRegion region, ToIntFunction<Location> func) {
+        int m = Integer.MIN_VALUE;
+        for (Location loc : region) {
+            m = Math.max(m, func.applyAsInt(loc));
+        }
+        return m;
+    }
 }

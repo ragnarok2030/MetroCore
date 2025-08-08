@@ -1,11 +1,11 @@
-// DistrSubCommand.java
+// src/main/java/net/metroCore/Modules/metroedit/command/region/DistrSubCommand.java
 package net.metroCore.Modules.metroedit.command.region;
 
 import net.metroCore.Core.command.AbstractSubCommand;
 import net.metroCore.MetroCore;
 import net.metroCore.Modules.metroedit.MetroEditModule;
-import net.metroCore.Modules.metroedit.handler.SelectionHandler;
 import net.metroCore.Modules.metroedit.handler.UndoRedoHandler;
+import net.metroCore.Modules.metroedit.handler.UndoRedoHandler.BlockChange;
 import net.metroCore.Modules.metroedit.region.CuboidRegion;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -14,6 +14,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
@@ -27,10 +28,10 @@ public class DistrSubCommand extends AbstractSubCommand {
             return true;
         }
         if (args.length < 2) {
-            p.sendMessage("§cUsage: /metroedit distr <material1,material2,…> <chance%>");
+            p.sendMessage("§cUsage: /metroedit distr <mat1,mat2,…> <chance%>");
             return true;
         }
-        List<String> mats = List.of(args[0].split(","));
+        String[] matNames = args[0].split(",");
         int chance;
         try {
             chance = Integer.parseInt(args[1]);
@@ -42,21 +43,28 @@ public class DistrSubCommand extends AbstractSubCommand {
         MetroEditModule mod = MetroCore.getInstance()
                 .getModuleRegistry()
                 .get(MetroEditModule.class);
-        SelectionHandler sel = mod.getSelectionHandler();
         UndoRedoHandler undo = mod.getUndoRedoHandler();
 
-        sel.getPos1(p).flatMap(a ->
-                sel.getPos2(p).map(b -> new CuboidRegion(a, b))
+        mod.getSelectionHandler().getPos1(p).flatMap(a ->
+                mod.getSelectionHandler().getPos2(p).map(b -> new CuboidRegion(a, b))
         ).ifPresentOrElse(region -> {
+            List<BlockChange> batch = new ArrayList<>();
             for (Location loc : region) {
                 if (rnd.nextInt(100) < chance) {
-                    String matName = mats.get(rnd.nextInt(mats.size()));
+                    String matName = matNames[rnd.nextInt(matNames.length)];
                     Material mat = Material.matchMaterial(matName);
                     if (mat == null) continue;
-                    undo.record(p, loc, loc.getBlock().getBlockData(), mat.createBlockData());
-                    loc.getBlock().setType(mat);
+                    batch.add(new BlockChange(
+                            loc.clone(),
+                            loc.getBlock().getBlockData(),
+                            mat.createBlockData()
+                    ));
                 }
             }
+            // record all changes as one undo step, then apply them
+            undo.recordBulk(p, batch);
+            batch.forEach(BlockChange::applyRedo);
+
             p.sendMessage("§aDistributed blocks with " + chance + "% chance.");
         }, () -> p.sendMessage("§cBoth positions must be set first."));
 

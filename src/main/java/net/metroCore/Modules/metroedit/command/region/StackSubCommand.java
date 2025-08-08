@@ -3,8 +3,9 @@ package net.metroCore.Modules.metroedit.command.region;
 import net.metroCore.Core.command.AbstractSubCommand;
 import net.metroCore.MetroCore;
 import net.metroCore.Modules.metroedit.MetroEditModule;
-import net.metroCore.Modules.metroedit.handler.SelectionHandler;
 import net.metroCore.Modules.metroedit.handler.UndoRedoHandler;
+import net.metroCore.Modules.metroedit.handler.UndoRedoHandler.BlockChange;
+import net.metroCore.Modules.metroedit.handler.SelectionHandler;
 import net.metroCore.Modules.metroedit.region.CuboidRegion;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -23,59 +24,56 @@ public class StackSubCommand extends AbstractSubCommand {
             return true;
         }
 
-        // Parse number of repetitions once and make it effectively final
-        int parsedTimes = 1;
+        // parse repetition count
+        int parsed = 1;
         if (args.length >= 1) {
             try {
-                parsedTimes = Integer.parseInt(args[0]);
+                parsed = Integer.parseInt(args[0]);
             } catch (NumberFormatException ignored) {}
         }
-        final int times = parsedTimes;
+        final int times = parsed;
 
         MetroEditModule mod = MetroCore.getInstance()
                 .getModuleRegistry()
                 .get(MetroEditModule.class);
-
         SelectionHandler sel = mod.getSelectionHandler();
         UndoRedoHandler undo = mod.getUndoRedoHandler();
 
         sel.getPos1(p).flatMap(a ->
                 sel.getPos2(p).map(b -> new CuboidRegion(a, b))
         ).ifPresentOrElse(region -> {
-            // Copy region blocks into a final list
-            List<Location> blocks = new ArrayList<>();
-            for (Location loc : region) {
-                blocks.add(loc.clone());
-            }
-            final List<Location> finalBlocks = blocks;
+            // capture original blocks
+            List<Location> originals = new ArrayList<>();
+            for (Location loc : region) originals.add(loc.clone());
 
-            // Compute vertical span
+            // compute vertical span
             int minY = Integer.MAX_VALUE, maxY = Integer.MIN_VALUE;
-            for (Location loc : finalBlocks) {
+            for (Location loc : originals) {
                 int y = loc.getBlockY();
-                if (y < minY) minY = y;
-                if (y > maxY) maxY = y;
+                minY = Math.min(minY, y);
+                maxY = Math.max(maxY, y);
             }
-            final int span = maxY - minY + 1;
+            int span = maxY - minY + 1;
 
-            // Perform the stacking loop
+            // build batch of changes
+            List<BlockChange> batch = new ArrayList<>();
             for (int t = 1; t <= times; t++) {
-                for (Location orig : finalBlocks) {
-                    Location target = orig.clone().add(0, span * t, 0);
-                    // record for undo
-                    undo.record(p,
-                            target,
-                            target.getBlock().getBlockData(),
-                            orig.getBlock().getBlockData()
-                    );
-                    target.getBlock().setBlockData(orig.getBlock().getBlockData());
+                for (Location loc : originals) {
+                    Location dest = loc.clone().add(0, span * t, 0);
+                    batch.add(new BlockChange(
+                            dest.clone(),
+                            dest.getBlock().getBlockData(),
+                            loc.getBlock().getBlockData()
+                    ));
                 }
             }
 
+            // record and apply all at once
+            undo.recordBulk(p, batch);
+            batch.forEach(BlockChange::applyRedo);
+
             p.sendMessage("§aStacked selection " + times + " time(s).");
-        }, () -> {
-            p.sendMessage("§cYou must set both positions first.");
-        });
+        }, () -> p.sendMessage("§cYou must set both positions first."));
 
         return true;
     }

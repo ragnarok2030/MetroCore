@@ -1,4 +1,3 @@
-// ReplSubCommand.java
 package net.metroCore.Modules.metroedit.command.region;
 
 import net.metroCore.Core.command.AbstractSubCommand;
@@ -6,6 +5,7 @@ import net.metroCore.MetroCore;
 import net.metroCore.Modules.metroedit.MetroEditModule;
 import net.metroCore.Modules.metroedit.handler.SelectionHandler;
 import net.metroCore.Modules.metroedit.handler.UndoRedoHandler;
+import net.metroCore.Modules.metroedit.handler.UndoRedoHandler.BlockChange;
 import net.metroCore.Modules.metroedit.region.CuboidRegion;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -64,22 +64,24 @@ public class ReplSubCommand extends AbstractSubCommand {
         }
 
         // Build prefix sum
-        final double[] prefix = new double[wts.size()];
+        double[] prefix = new double[wts.size()];
         double acc = 0;
         for (int i = 0; i < wts.size(); i++) {
             acc += wts.get(i);
             prefix[i] = acc;
         }
-        final double grandTotal = acc;
+        double grandTotal = acc;
 
         MetroEditModule mod = MetroCore.getInstance()
-                .getModuleRegistry().get(MetroEditModule.class);
+                .getModuleRegistry()
+                .get(MetroEditModule.class);
         SelectionHandler sel = mod.getSelectionHandler();
         UndoRedoHandler undo = mod.getUndoRedoHandler();
 
         sel.getPos1(p).flatMap(a ->
                 sel.getPos2(p).map(b -> new CuboidRegion(a, b))
         ).ifPresentOrElse(region -> {
+            List<BlockChange> batch = new ArrayList<>();
             int replaced = 0;
             for (Location loc : region) {
                 if (loc.getBlock().getType() != from) continue;
@@ -89,11 +91,18 @@ public class ReplSubCommand extends AbstractSubCommand {
                 idx = Math.min(idx, toMats.size() - 1);
 
                 Material chosen = toMats.get(idx);
-                undo.record(p, loc, loc.getBlock().getBlockData(), chosen.createBlockData());
-                loc.getBlock().setBlockData(chosen.createBlockData());
+                batch.add(new BlockChange(
+                        loc.clone(),
+                        loc.getBlock().getBlockData(),
+                        chosen.createBlockData()
+                ));
                 replaced++;
             }
-            p.sendMessage("§aReplaced " + replaced + " of " + from);
+            if (!batch.isEmpty()) {
+                undo.recordBulk(p, batch);
+                batch.forEach(BlockChange::applyRedo);
+            }
+            p.sendMessage("§aReplaced " + replaced + " of " + from + ".");
         }, () -> p.sendMessage("§cBoth positions must be set first."));
 
         return true;
